@@ -16,46 +16,59 @@ export async function getStaticPaths() {
   const data = await res.json();
 
   const items = data.map((n) => ({ ...n, _slug: (n.slug?.trim() || slugify(n.title || "")) }));
-  const paths = items.filter(n => n._slug).map(n => ({
+  return items.filter(n => n._slug).map(n => ({
     params: { slug: n._slug },
     props: { item: { ...n, slug: n._slug } },
   }));
-
-  console.log("[getStaticPaths] Built slugs:", paths.map(p => p.params.slug));
-  return paths;
 }
 
 const { item } = Astro.props;
 const pageTitle = `${item.title} — Fernie Neighbourhood`;
 const description = item.desc || `About ${item.title}`;
-const heroSrc = item.img?.startsWith("http") ? item.img : (item.img ? "/images/" + item.img : "");
+
+// ----- image helpers (dev: raw files, prod: Netlify Image CDN) -----
+function rawPath(img) {
+  if (!img) return "";
+  return img.startsWith("http") ? img : "/images/" + img;
+}
+function cdn(url, w, h) {
+  return `/.netlify/images?url=${encodeURIComponent(url)}&w=${w}${h ? `&h=${h}&fit=cover` : "&fit=cover"}`;
+}
+function heroSrc(url) { return import.meta.env.PROD ? cdn(url, 1600, 900) : url; }
+function heroSrcSet(url) {
+  if (!import.meta.env.PROD) return undefined;
+  const widths = [960, 1280, 1600, 1920];
+  return widths.map(w => `${cdn(url, w, Math.round(w*0.5625))} ${w}w`).join(", ");
+}
 
 // Pills: array or comma-separated string
 const pills = Array.isArray(item.pills)
   ? item.pills.filter(Boolean)
   : String(item.pills ?? "").split(",").map(s => s.trim()).filter(Boolean);
 
-// Reserve aspect ratio to avoid shifts
-const heroW = 1600, heroH = 900; // ~16:9
+const raw = rawPath(item.img);
+const heroW = 1600, heroH = 900; // reserve space (≈16:9)
 ---
 <Site title={pageTitle} description={description} active="neighbourhoods">
   <!-- Preload LCP hero -->
   <fragment slot="head">
-    {heroSrc && <link rel="preload" as="image" href={heroSrc} fetchpriority="high" />}
+    {raw && <link rel="preload" as="image" href={heroSrc(raw)} fetchpriority="high" />}
   </fragment>
 
   <!-- Full-bleed 40vh hero under sticky nav -->
   <div slot="hero">
-    {heroSrc && (
+    {raw && (
       <>
         <style>
           .hero40{width:100%;height:40vh;object-fit:cover;display:block;border-bottom:1px solid #eee}
         </style>
         <img
           class="hero40"
-          src={heroSrc}
+          src={heroSrc(raw)}
+          srcset={heroSrcSet(raw)}
+          sizes="100vw"
           alt={item.title}
-          width={heroW} height={heroH}   /* reserve space for CLS */
+          width={heroW} height={heroH}   /* reserve space to avoid CLS */
           fetchpriority="high"
           decoding="async"
         />

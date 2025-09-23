@@ -5,8 +5,10 @@ const title = "Neighbourhoods — Fernie";
 const description = "Browse Fernie neighbourhoods (data from Google Sheets).";
 
 function slugify(s = "") {
-  return String(s).toLowerCase().trim().replace(/&/g,"-and-").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+  return String(s).toLowerCase().trim()
+    .replace(/&/g,"-and-").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
 }
+
 async function fetchSheet(url) {
   if (!url) throw new Error("PUBLIC_SHEET_JSON missing. Add to .env and restart dev.");
   const r = await fetch(url, { cache:"no-store" });
@@ -20,6 +22,27 @@ try {
   rows = raw.map(n => ({ ...n, _slug: (n.slug?.trim() || slugify(n.title || "")) }));
 } catch {
   rows = [{ _slug:"", title:"Fallback", desc:"Sheet didn’t load.", img:"" }];
+}
+
+/* ---------- image helpers ----------
+   - In dev: serve from /images/... so astro dev shows images.
+   - In prod (Netlify): use Image CDN to get smaller files.
+------------------------------------ */
+function rawPath(img) {
+  if (!img) return "";
+  return img.startsWith("http") ? img : "/images/" + img;
+}
+function cdn(url, w, h) {
+  // Netlify Image CDN (works on Netlify; dev will still render the raw src)
+  return `/.netlify/images?url=${encodeURIComponent(url)}&w=${w}${h ? `&h=${h}&fit=cover` : "&fit=cover"}`;
+}
+function srcForCard(url, w=640, h=480) {
+  return import.meta.env.PROD ? cdn(url, w, h) : url;
+}
+function srcsetForCard(url) {
+  if (!import.meta.env.PROD) return undefined; // only use srcset in prod
+  const sizes = [480, 640, 800, 960, 1200];
+  return sizes.map(w => `${cdn(url, w, Math.round(w*0.75))} ${w}w`).join(", ");
 }
 ---
 <Site title={title} description={description} active="neighbourhoods">
@@ -44,19 +67,22 @@ try {
 
   <section class="grid" aria-label="Neighbourhoods list">
     {rows.map((n, i) => {
-      const imgUrl = n.img?.startsWith('http') ? n.img : (n.img ? '/images/' + n.img : "");
+      const raw = rawPath(n.img);
+      const src = srcForCard(raw, 640, 480);           // default 640×480 on cards
+      const srcset = srcsetForCard(raw);
       return (
         <article class="card">
           <a href={n._slug ? `/neighbourhoods/${n._slug}` : "#"}>
-            {imgUrl && (
+            {raw && (
               <img
-                src={imgUrl}
+                src={src}
+                srcset={srcset}
+                sizes="(min-width: 960px) 33vw, (min-width: 640px) 50vw, 100vw"
                 alt={n.title}
-                width={800} height={600}                 /* reserve space (4:3) to reduce CLS */
+                width="800" height="600"                 /* reserve space (4:3) for CLS */
                 loading={i === 0 ? "eager" : "lazy"}     /* prioritize first card */
                 fetchpriority={i === 0 ? "high" : undefined}
                 decoding="async"
-                sizes="(min-width: 960px) 33vw, (min-width: 640px) 50vw, 100vw"
               />
             )}
             <div class="inner">
