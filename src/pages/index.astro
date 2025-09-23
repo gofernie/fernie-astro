@@ -1,98 +1,23 @@
 ---
-const title = "Fernie Real Estate — Neighbourhoods";
-const description = "Ultra fast, mobile-first. Data from Google Sheets.";
-
-// read your Google Apps Script URL from .env
-const url = import.meta.env.PUBLIC_SHEET_JSON;
-let rows = [];
-
-try {
-  const res = await fetch(url, { cache: "no-store" });
-  rows = await res.json();
-} catch (e) {
-  console.error("Failed to fetch sheet data", e);
-  // fallback so the page still renders
-  rows = [
-    { title: "Fallback", desc: "This shows if the sheet isn't loading", img: "", pills: [] }
-  ];
-}
+import Site from "../layouts/Site.astro";
+const title = "Fernie Real Estate";
+const description = "Fast, mobile-first site powered by Google Sheets.";
 ---
+<Site title={title} description={description} active="home">
+  <style>
+    .hero { padding: 48px 0; }
+    .hero h1 { margin:0 0 8px; font-size: clamp(32px,6vw,56px); }
+    .hero p { margin:0 0 16px; color:#444; font-size:clamp(16px,2.4vw,20px); }
+    .cta { display:inline-flex; gap:10px; flex-wrap:wrap; }
+    .btn { display:inline-block; padding:12px 16px; border:1px solid #111; border-radius:12px; text-decoration:none; color:#111; }
+  </style>
 
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>{title}</title>
-    <meta name="description" content={description} />
-    <style>
-      :root { --max: 72rem; --pad: 16px; }
-      * { box-sizing: border-box; }
-      body { margin: 0; font: 16px/1.5 system-ui, sans-serif; color: #111; }
-      header { padding: var(--pad); border-bottom: 1px solid #eee; }
-      .container { max-width: var(--max); margin: 0 auto; padding: var(--pad); }
-      .hero { padding: 32px var(--pad); }
-      .hero h1 { margin: 0 0 8px; font-size: clamp(28px, 4vw, 42px); }
-      .hero p { margin: 0 0 16px; color: #444; }
-      .cta { display: inline-flex; gap: 8px; flex-wrap: wrap; }
-      .btn { display: inline-block; padding: 10px 14px; border: 1px solid #111; border-radius: 10px; text-decoration: none; color: #111; }
-      .grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
-      @media (min-width: 640px){ .grid { grid-template-columns: repeat(2,1fr); } }
-      @media (min-width: 960px){ .grid { grid-template-columns: repeat(3,1fr); } }
-      .card { border: 1px solid #eee; border-radius: 14px; overflow: hidden; background: #fff; }
-      .card img { width: 100%; height: auto; display: block; aspect-ratio: 4/3; object-fit: cover; }
-      .card-inner { padding: 12px; }
-      .card h3 { margin: 6px 0; font-size: 18px; }
-      .card p { margin: 0 0 8px; color: #444; }
-      .pills { display:flex; gap:6px; flex-wrap:wrap; margin:.5rem 0 0; }
-      .pill { border:1px solid #ddd; border-radius:999px; padding:2px 8px; font-size:12px; color:#444; }
-      footer { padding: var(--pad); border-top: 1px solid #eee; color: #666; }
-    </style>
-  </head>
-  <body>
-    <header>
-      <div class="container">
-        <strong>FERNIE • REAL ESTATE</strong>
-      </div>
-    </header>
-
-    <main class="container">
-      <section class="hero">
-        <h1>Explore Fernie neighbourhoods</h1>
-        <p>Ultra-fast, mobile-first site. Powered by Google Sheets.</p>
-        <div class="cta">
-          <a class="btn" href="#">Buy</a>
-          <a class="btn" href="#">Sell</a>
-          <a class="btn" href="#">Talk to Chris</a>
-        </div>
-      </section>
-
-      <section aria-label="Neighbourhoods" class="grid">
-        {rows.map((n) => (
-          <article class="card">
-            {n.img && (
-              <img
-                src={n.img?.startsWith('http') ? n.img : '/images/' + n.img}
-                alt={n.title}
-                loading="eager"
-              />
-            )}
-            <div class="card-inner">
-              <h3>{n.title}</h3>
-              <p>{n.desc}</p>
-              {n.pills?.length ? (
-                <div class="pills">
-                  {n.pills.map((p) => <span class="pill">{p}</span>)}
-                </div>
-              ) : null}
-            </div>
-          </article>
-        ))}
-      </section>
-    </main>
-
-    <footer>
-      <div class="container">© {new Date().getFullYear()} Chris Crump</div>
-    </footer>
-  </body>
-</html>
+  <section class="hero">
+    <h1>Find your place in Fernie</h1>
+    <p>Browse neighbourhoods with trail access, schools, views, and more.</p>
+    <div class="cta">
+      <a class="btn" href="/neighbourhoods">Explore neighbourhoods</a>
+      <a class="btn" href="#">Talk to Chris</a>
+    </div>
+  </section>
+</Site>
