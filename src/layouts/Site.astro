@@ -23,33 +23,37 @@ const nav = [
     <slot name="head" />
     <style>
       :root { --max:72rem; --pad:16px; }
-      * { box-sizing: border-box; }
+      * { box-sizing:border-box }
       body { margin:0; font:16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:#111; background:#fff; }
-      .container { max-width: var(--max); margin: 0 auto; padding: var(--pad); }
+      .container { max-width:var(--max); margin:0 auto; padding:var(--pad); }
 
-      /* Sticky header — reserve height to prevent CLS */
-      .site-header {
-        position: sticky; top: 0; z-index: 50;
-        background: rgba(255,255,255,.82);
-        backdrop-filter: blur(8px);
-        border-bottom: 1px solid #eee;
-      }
-      .bar {
-        display:flex; align-items:center; justify-content:space-between; gap:12px;
-        min-height: 64px;              /* reserves header height */
-      }
-      @media (max-width: 480px) {
-        .bar { min-height: 84px; }     /* allow for wrapping nav without shifting */
-      }
+      /* Sticky header */
+      .site-header { position:sticky; top:0; z-index:50; background:rgba(255,255,255,.85); backdrop-filter:blur(8px); border-bottom:1px solid #eee; }
+      .bar { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:64px; }
+      .brand { display:flex; align-items:center; gap:10px; text-decoration:none; color:#111; font-weight:700; white-space:nowrap; }
+      .brand img { width:120px; height:30px; display:block; }
 
-      .brand { display:flex; align-items:center; gap:10px; text-decoration:none; color:#111; font-weight:700; }
-      .brand span { white-space: nowrap; }  /* prevent wrap-jump */
-      .brand img { display:block; height:auto; }
-
-      .nav { display:flex; gap:12px; flex-wrap:wrap; }
-      .link { color:#111; text-decoration:none; padding:8px 10px; border-radius:10px; }
+      /* Links never wrap on desktop */
+      .nav { display:flex; align-items:center; gap:12px; }
+      .links { display:flex; gap:12px; flex-wrap:nowrap; }
+      .link { color:#111; text-decoration:none; padding:8px 10px; border-radius:10px; white-space:nowrap; }
       .link:hover { background:#f5f5f5; }
       .link.active { border:1px solid #111; }
+
+      /* Hamburger button (hidden on wide) */
+      .hambtn { display:none; border:1px solid #111; background:#fff; border-radius:10px; padding:8px 10px; }
+      .hambtn:focus { outline:2px solid #111; outline-offset:2px; }
+
+      /* Mobile menu panel (hidden by default) */
+      .menu { display:none; position:absolute; right:var(--pad); top:100%; background:#fff; border:1px solid #eee; border-radius:12px; box-shadow:0 12px 28px rgba(0,0,0,.12); padding:8px; }
+      .menu a { display:block; padding:10px 12px; text-decoration:none; color:#111; border-radius:8px; }
+      .menu a:hover { background:#f5f5f5; }
+
+      /* Breakpoint: switch to hamburger so links never stack */
+      @media (max-width: 840px) {
+        .links { display:none; }
+        .hambtn { display:inline-flex; align-items:center; gap:8px; }
+      }
 
       footer { border-top:1px solid #eee; color:#666; }
     </style>
@@ -58,26 +62,77 @@ const nav = [
     <header class="site-header">
       <div class="container bar">
         <a class="brand" href="/">
-          <!-- Give the logo intrinsic size so layout doesn't reflow when it loads -->
-          <img src="/logo.svg" alt="Fernie Real Estate" width="120" height="30" onerror="this.style.display='none'" />
-          <span>FERNIE • REAL ESTATE</span>
-        </a>
+  <img
+    src="/logo.svg"
+    alt=""                 /* decorative: no fallback text */
+    aria-hidden="true"
+    width="120" height="30"
+    decoding="async"
+    onerror="this.style.display='none'"  /* hide if missing */
+  />
+  <span>FERNIE • REAL ESTATE</span>
+</a>
+
+
         <nav class="nav" aria-label="Primary">
-          {nav.map(n => (
-            <a class={`link ${active === n.key ? 'active' : ''}`} href={n.href}>{n.label}</a>
-          ))}
+          <div class="links" id="nav-links">
+            {nav.map(n => (
+              <a class={`link ${active === n.key ? 'active' : ''}`} href={n.href}>{n.label}</a>
+            ))}
+          </div>
+
+          <button id="nav-toggle" class="hambtn" aria-label="Open menu" aria-expanded="false" aria-controls="nav-menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" stroke="#111" stroke-width="2" stroke-linecap="round"/></svg>
+            Menu
+          </button>
+
+          <div id="nav-menu" class="menu" role="menu" data-open="false">
+            {nav.map(n => (
+              <a class={`${active === n.key ? 'active' : ''}`} href={n.href} role="menuitem">{n.label}</a>
+            ))}
+          </div>
         </nav>
       </div>
     </header>
 
-    <!-- Optional full-bleed hero area -->
     <slot name="hero" />
 
-    <!-- Main page content -->
     <main class="container">
       <slot />
     </main>
 
-    <footer class="container">© {new Date().getFullYear()} Chris Crump</footer>
+    <footer class="container">
+      © {new Date().getFullYear()} Chris Crump
+    </footer>
+
+    <script>
+      const btn = document.getElementById('nav-toggle');
+      const menu = document.getElementById('nav-menu');
+      btn?.addEventListener('click', () => {
+        const open = menu.getAttribute('data-open') === 'true';
+        menu.setAttribute('data-open', String(!open));
+        btn.setAttribute('aria-expanded', String(!open));
+        menu.style.display = !open ? 'block' : 'none';
+      });
+      // Close on outside click
+      document.addEventListener('click', (e) => {
+        if (!menu || !btn) return;
+        const open = menu.getAttribute('data-open') === 'true';
+        if (!open) return;
+        if (!menu.contains(e.target) && !btn.contains(e.target)) {
+          menu.setAttribute('data-open', 'false');
+          btn.setAttribute('aria-expanded', 'false');
+          menu.style.display = 'none';
+        }
+      });
+      // Close on escape
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && menu?.getAttribute('data-open') === 'true') {
+          menu.setAttribute('data-open', 'false');
+          btn?.setAttribute('aria-expanded', 'false');
+          menu.style.display = 'none';
+        }
+      });
+    </script>
   </body>
 </html>

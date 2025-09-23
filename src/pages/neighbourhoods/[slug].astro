@@ -1,21 +1,17 @@
 ---
 import Site from "../../layouts/Site.astro";
 
-/** Static pages from your sheet */
+/* helpers */
 function slugify(s = "") {
   return String(s).toLowerCase().trim()
-    .replace(/&/g,"-and-")
-    .replace(/[^a-z0-9]+/g,"-")
-    .replace(/^-+|-+$/g,"");
+    .replace(/&/g,"-and-").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
 }
-
 export async function getStaticPaths() {
   const url = import.meta.env.PUBLIC_SHEET_JSON;
   if (!url) return [];
   const res = await fetch(url);
   const data = await res.json();
-
-  const items = data.map((n) => ({ ...n, _slug: (n.slug?.trim() || slugify(n.title || "")) }));
+  const items = data.map(n => ({ ...n, _slug: (n.slug?.trim() || slugify(n.title || "")) }));
   return items.filter(n => n._slug).map(n => ({
     params: { slug: n._slug },
     props: { item: { ...n, slug: n._slug } },
@@ -26,29 +22,31 @@ const { item } = Astro.props;
 const pageTitle = `${item.title} — Fernie Neighbourhood`;
 const description = item.desc || `About ${item.title}`;
 
-// image helpers (dev raw; prod Netlify CDN)
-function rawPath(img) { return img ? (img.startsWith("http") ? img : "/images/" + img) : ""; }
-function cdn(url, w, h) { return `/.netlify/images?url=${encodeURIComponent(url)}&w=${w}${h ? `&h=${h}&fit=cover` : "&fit=cover"}`; }
-function heroSrc(url) { return import.meta.env.PROD ? cdn(url, 1600, 900) : url; }
-function heroSrcSet(url) {
+/* image helpers */
+function rawPath(img){ return img ? (img.startsWith("http") ? img : "/images/" + img) : ""; }
+function cdn(url,w,h){ return `/.netlify/images?url=${encodeURIComponent(url)}&w=${w}${h?`&h=${h}&fit=cover`:"&fit=cover"}`; }
+function heroSrc(url){ return import.meta.env.PROD ? cdn(url,1600,900) : url; }
+function heroSrcSet(url){
   if (!import.meta.env.PROD) return undefined;
-  const widths = [960, 1280, 1600, 1920];
-  return widths.map(w => `${cdn(url, w, Math.round(w*0.5625))} ${w}w`).join(", ");
+  const widths=[960,1280,1600,1920];
+  return widths.map(w=>`${cdn(url,w,Math.round(w*0.5625))} ${w}w`).join(", ");
 }
 
 const raw = rawPath(item.img);
 const heroW = 1600, heroH = 900;
 
-// pills: array or CSV
+/* pills */
 const pills = Array.isArray(item.pills)
   ? item.pills.filter(Boolean)
-  : String(item.pills ?? "").split(",").map(s => s.trim()).filter(Boolean);
+  : String(item.pills ?? "").split(",").map(s=>s.trim()).filter(Boolean);
 ---
 <Site title={pageTitle} description={description} active="neighbourhoods">
   {raw && <link slot="head" rel="preload" as="image" href={heroSrc(raw)} fetchpriority="high" />}
 
   <div slot="hero">
-    <style>.hero40{width:100%;height:40vh;object-fit:cover;display:block;border-bottom:1px solid #eee}</style>
+    <style>
+      .hero40{ width:100%; height:40vh; object-fit:cover; display:block; border-bottom:1px solid #eee; }
+    </style>
     {raw && (
       <img
         class="hero40"
@@ -64,12 +62,17 @@ const pills = Array.isArray(item.pills)
   </div>
 
   <style>
-    .title{margin:0 0 8px;font-size:clamp(28px,4vw,42px)}
+    .title{margin:16px 0 8px;font-size:clamp(28px,4vw,42px)}
     .lede{color:#444;margin:0 0 16px}
-    .content :where(h2,h3){margin-top:1.2em}
-    .back{display:inline-block;margin:8px 0 16px;text-decoration:none;color:#111;border:1px solid #111;padding:8px 12px;border-radius:10px}
-    .pills{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 16px}
+    .back{display:inline-block;margin:12px 0 16px;text-decoration:none;color:#111;border:1px solid #111;padding:8px 12px;border-radius:10px}
+    .pills{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px}
     .pill{border:1px solid #ddd;border-radius:999px;padding:4px 10px;font-size:12px;color:#444;background:#fff}
+
+    .card{border:1px solid #eee;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);background:#fff;overflow:hidden}
+    .card h2{margin:0;padding:16px;border-bottom:1px solid #eee;font-size:18px;color:#6b7280;} /* light grey */
+    .card-body{padding:16px}
+
+    .content :where(h2,h3){margin-top:1.2em}
   </style>
 
   <a class="back" href="/neighbourhoods">← Back to neighbourhoods</a>
@@ -82,5 +85,11 @@ const pills = Array.isArray(item.pills)
   )}
 
   {item.desc && <p class="lede">{item.desc}</p>}
-  <section class="content" set:html={item.about}></section>
+
+  <section class="card" aria-labelledby="about-title">
+    <h2 id="about-title">About {item.title} Neighbourhood</h2>
+    <div class="card-body">
+      <section class="content" set:html={item.about}></section>
+    </div>
+  </section>
 </Site>
