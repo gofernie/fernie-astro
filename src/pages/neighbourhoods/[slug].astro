@@ -78,91 +78,83 @@ const factAccess = item.access || "7 min to Downtown, on bus route";
       border:1px solid #111; padding:8px 12px; border-radius:10px;
     }
 
-    /* Quick facts mini-cards */
-    .qfacts-grid {
-      display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr));
-      gap:16px; margin:24px 0;
-    }
-    .qfact-box {
-      background:#fff; border:1px solid #e5e7eb; border-radius:12px;
-      box-shadow:0 1px 3px rgba(0,0,0,.08); padding:12px 16px;
-      display:flex; flex-direction:column; gap:4px;
-    }
-    .qfact-box strong { display:flex; align-items:center; gap:6px; font-weight:700; font-size:14px; color:#111827; }
-    .qfact-box p { margin:0; font-size:13px; color:#4b5563; }
-
-    /* Main cards */
+    /* Shared card style (Overview, About, CTA, and mini fact cards) */
     .card {
-      border:1px solid #cbd5e1; border-radius:14px; box-shadow:0 4px 10px rgba(0,0,0,.08);
+      border:1px solid #cbd5e1; border-radius:14px;
+      box-shadow:0 4px 10px rgba(0,0,0,.08);
       background:#fff; margin:24px 0; overflow:hidden;
     }
-    .card h2 { margin:0; padding:16px; border-bottom:1px solid #e5e7eb; font-size:18px; color:#334155; }
+    .card h2 {
+      margin:0; padding:16px; border-bottom:1px solid #e5e7eb;
+      font-size:18px; color:#334155;
+    }
     .card-body { padding:16px; }
     .content :where(h2,h3){margin-top:1.2em}
 
-    /* CTA card */
-    .cta-card {
-      margin: 32px 0;
-      padding: 24px;
-      background: #f8fafc;
-      border: 1px solid #e5e7eb;
-      border-radius: 14px;
-      text-align: center;
-      box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    /* Quick facts grid (three mini cards using the same style) */
+    .qfacts-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:16px; margin:24px 0; }
+    .qfact {
+      border:1px solid #cbd5e1; border-radius:14px; background:#fff;
+      box-shadow:0 4px 10px rgba(0,0,0,.08);
     }
-    .cta-card h2 {
-      margin: 0 0 8px;
-      font-size: 20px;
-      font-weight: 700;
-      color: #1e293b;
-    }
-    .cta-card p {
-      margin: 0 0 16px;
-      color: #475569;
-      font-size: 15px;
-    }
-    .cta-button {
-      display: inline-block;
-      background: #0971ce;
-      color: #fff;
-      font-weight: 600;
-      padding: 10px 20px;
-      border-radius: 8px;
-      text-decoration: none;
+    .qfact .qbody { padding:12px 14px; }
+    .qfact .title { display:flex; align-items:center; gap:8px; font-weight:700; color:#111827; margin:0 0 4px; font-size:14px; }
+    .qfact p { margin:0; font-size:13px; color:#475569; }
+
+    /* CTA (card look, no title, stronger bg) */
+    .cta { background:#f0f6ff; border-color:#bfdbfe; }
+    .cta .card-body { text-align:center; }
+    .cta .cta-button {
+      display:inline-block; background:#0971ce; color:#fff; font-weight:600;
+      padding:12px 24px; border-radius:8px; text-decoration:none;
       transition: background .2s ease, transform .2s ease;
     }
-    .cta-button:hover {
-      background: #0757a6;
-      transform: translateY(-1px);
-    }
+    .cta .cta-button:hover { background:#0757a6; transform:translateY(-1px); }
   </style>
 
   <a class="back" href="/neighbourhoods">← Back to neighbourhoods</a>
 
-  <!-- OVERVIEW CARD FIRST -->
+  <!-- OVERVIEW (card) -->
   <section class="card" aria-labelledby="desc-title">
     <h2 id="desc-title">{item.title} Overview</h2>
     <div class="card-body"><p>{item.desc}</p></div>
   </section>
 
-  <!-- MINI FACT BOXES -->
-  <section id="qfacts" class="qfacts-grid" aria-label="Quick facts"
-           style="display:grid;visibility:visible;opacity:1">
-    <div class="qfact-box"><strong>🏔️ Vibe</strong><p>{factVibe}</p></div>
-    <div class="qfact-box"><strong>🚲 Trails</strong><p>{factTrails}</p></div>
-    <div class="qfact-box"><strong>🚌 Access</strong><p>{factAccess}</p></div>
+  <!-- QUICK FACTS: three MINI CARDS -->
+  <section id="qfacts" class="qfacts-grid" aria-label="Quick facts" style="display:grid;visibility:visible;opacity:1">
+    <article class="qfact">
+      <div class="qbody">
+        <h3 class="title">🏔️ Vibe</h3>
+        <p>{factVibe}</p>
+      </div>
+    </article>
+    <article class="qfact">
+      <div class="qbody">
+        <h3 class="title">🚲 Trails</h3>
+        <p>{factTrails}</p>
+      </div>
+    </article>
+    <article class="qfact">
+      <div class="qbody">
+        <h3 class="title">🚌 Access</h3>
+        <p>{factAccess}</p>
+      </div>
+    </article>
   </section>
 
-  <!-- CTA CARD ABOVE ABOUT -->
-  <section class="cta-card">
-    <h2>View Homes for Sale in {item.title}</h2>
-    <p>See the latest listings and market updates for {item.title}. Start exploring now.</p>
-    <a class="cta-button" href={`/search?neighbourhood=${item.slug}`}>
-      Browse {item.title} Homes →
-    </a>
+  <!-- CTA (card style, no title) -->
+  <section class="card cta">
+    <div class="card-body">
+      <p style="margin:0 0 16px;font-size:16px;color:#1e293b;font-weight:500">
+        See the latest listings and market updates for {item.title}.
+      </p>
+      <a class="cta-button" href={`/search?neighbourhood=${item.slug}`}>
+        Browse {item.title} Homes →
+      </a>
+    </div>
   </section>
 
-  <!-- OPTIONAL ABOUT CARD -->
+  <!-- ABOUT (card, optional) -->
   {item.about && (
     <section class="card" aria-labelledby="about-title">
       <h2 id="about-title">About {item.title}</h2>
@@ -172,6 +164,7 @@ const factAccess = item.access || "7 min to Downtown, on bus route";
     </section>
   )}
 
+  <!-- Keep quick-facts visible in case anything tries to hide them post-hydration -->
   <script>
     (function () {
       const el = document.getElementById('qfacts');

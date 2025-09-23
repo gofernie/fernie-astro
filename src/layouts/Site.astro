@@ -19,7 +19,18 @@ const nav = [
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{title}</title>
-    <meta name="description" content={description} />
+    {description && <meta name="description" content={description} />}
+
+    <!-- Content Security Policy: allow Google Maps iframes -->
+    <meta http-equiv="Content-Security-Policy"
+      content="
+        default-src 'self' https: data: blob:;
+        frame-src https://www.google.com https://*.google.com https://*.googleusercontent.com;
+        img-src 'self' https: data:;
+        script-src 'self' https: 'unsafe-inline';
+        style-src 'self' https: 'unsafe-inline';
+      " />
+
     <slot name="head" />
     <style>
       :root { --max:72rem; --pad:16px; }
@@ -61,23 +72,22 @@ const nav = [
   <body>
     <header class="site-header">
       <div class="container bar">
-        <a class="brand" href="/">
-  <img
-    src="/logo.svg"
-    alt=""                 /* decorative: no fallback text */
-    aria-hidden="true"
-    width="120" height="30"
-    decoding="async"
-    onerror="this.style.display='none'"  /* hide if missing */
-  />
-  <span>FERNIE • REAL ESTATE</span>
-</a>
-
+        <a class="brand" href="/" aria-label="Home">
+          <!-- Serve from /public/logo.svg; if missing, swap to text so no 404 shows -->
+          <img
+            src="/logo.svg"
+            alt="Fernie Real Estate"
+            width="120" height="30"
+            decoding="async"
+            onerror="this.replaceWith(Object.assign(document.createElement('strong'),{textContent:'FERNIE • REAL ESTATE'}));"
+          />
+          <span class="sr-only" style="position:absolute;left:-9999px">Fernie Real Estate</span>
+        </a>
 
         <nav class="nav" aria-label="Primary">
           <div class="links" id="nav-links">
             {nav.map(n => (
-              <a class={`link ${active === n.key ? 'active' : ''}`} href={n.href}>{n.label}</a>
+              <a class={`link ${active === n.key ? 'active' : ''}`} href={n.href} aria-current={active === n.key ? 'page' : undefined}>{n.label}</a>
             ))}
           </div>
 
@@ -88,7 +98,7 @@ const nav = [
 
           <div id="nav-menu" class="menu" role="menu" data-open="false">
             {nav.map(n => (
-              <a class={`${active === n.key ? 'active' : ''}`} href={n.href} role="menuitem">{n.label}</a>
+              <a class={`${active === n.key ? 'active' : ''}`} href={n.href} role="menuitem" aria-current={active === n.key ? 'page' : undefined}>{n.label}</a>
             ))}
           </div>
         </nav>
