@@ -2,7 +2,7 @@
 const {
   title = "Fernie Real Estate",
   description = "",
-  active = "", // "home" | "neighbourhoods" | etc.
+  active = "", // "home" | "neighbourhoods" | ...
 } = Astro.props;
 
 const nav = [
@@ -20,26 +20,20 @@ const nav = [
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <slot name="head" />  <!-- pages can inject preload/meta/etc -->
     <style>
       :root { --max:72rem; --pad:16px; }
       * { box-sizing: border-box; }
       body { margin:0; font:16px/1.5 system-ui, sans-serif; color:#111; background:#fff; }
       .container { max-width: var(--max); margin: 0 auto; padding: var(--pad); }
 
-      /* Sticky nav */
-      .site-header {
-        position: sticky; top: 0; z-index: 50;
-        background: rgba(255,255,255,.82);
-        backdrop-filter: blur(8px);
-        border-bottom: 1px solid #eee;
-      }
+      /* Sticky, translucent nav */
+      .site-header { position: sticky; top: 0; z-index: 50; background: rgba(255,255,255,.82); backdrop-filter: blur(8px); border-bottom: 1px solid #eee; }
       .bar { display:flex; align-items:center; justify-content:space-between; gap:12px; }
       .brand { display:flex; align-items:center; gap:10px; text-decoration:none; color:#111; font-weight:700; }
       .brand img { height:30px; width:auto; display:block; }
       .nav { display:flex; gap:12px; flex-wrap:wrap; }
-      .link {
-        color:#111; text-decoration:none; padding:8px 10px; border-radius:10px;
-      }
+      .link { color:#111; text-decoration:none; padding:8px 10px; border-radius:10px; }
       .link:hover { background:#f5f5f5; }
       .link.active { border:1px solid #111; }
 
@@ -61,14 +55,16 @@ const nav = [
       </div>
     </header>
 
-    <!-- Optional full-bleed hero area (e.g., image on detail page) -->
+    <!-- Full-bleed hero slot (e.g., slug page image) -->
     <slot name="hero" />
 
-    <!-- Main page content -->
+    <!-- Page content -->
     <main class="container">
       <slot />
     </main>
 
-    <footer class="container">© {new Date().getFullYear()} Chris Crump</footer>
+    <footer class="container">
+      © {new Date().getFullYear()} Chris Crump
+    </footer>
   </body>
 </html>
