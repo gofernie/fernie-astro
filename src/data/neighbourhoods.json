@@ -1,0 +1,20 @@
+[
+  {
+    "title": "Ridgemont",
+    "desc": "Close to schools and downtown with loads of trails.",
+    "img": "/images/ridgemont.webp",
+    "href": "#"
+  },
+  {
+    "title": "Montane",
+    "desc": "Modern homes, great trail network, mountain views.",
+    "img": "/images/montane.webp",
+    "href": "#"
+  },
+  {
+    "title": "The Cedars",
+    "desc": "Quiet streets near Island Lake road and the river.",
+    "img": "/images/cedars.webp",
+    "href": "#"
+  }
+]
