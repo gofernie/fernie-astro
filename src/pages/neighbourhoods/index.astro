@@ -4,17 +4,45 @@ import Site from "../../layouts/Site.astro";
 const title = "Neighbourhoods — Fernie";
 const description = "Browse Fernie neighbourhoods (data from Google Sheets).";
 
+/* ---------- helpers ---------- */
 function slugify(s = "") {
   return String(s).toLowerCase().trim()
     .replace(/&/g,"-and-").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
 }
-
 async function fetchSheet(url) {
   if (!url) throw new Error("PUBLIC_SHEET_JSON missing. Add to .env and restart dev.");
   const r = await fetch(url, { cache:"no-store" });
   return r.json();
 }
 
+/* Raw path for local dev; CDN for Netlify prod */
+function rawPath(img) {
+  if (!img) return "";
+  return img.startsWith("http") ? img : "/images/" + img;
+}
+function cdn(url, w, h) {
+  return `/.netlify/images?url=${encodeURIComponent(url)}&w=${w}${h ? `&h=${h}&fit=cover` : "&fit=cover"}`;
+}
+
+/* Hero image helpers (16:9) */
+function heroSrc(url) { return import.meta.env.PROD ? cdn(url, 1600, 900) : url; }
+function heroSrcSet(url) {
+  if (!import.meta.env.PROD) return undefined;
+  const widths = [960, 1280, 1600, 1920];
+  return widths.map(w => `${cdn(url, w, Math.round(w * 0.5625))} ${w}w`).join(", ");
+}
+
+/* Card image helpers (4:3) */
+function cardSrc(url, w=480, h=360) {
+  return import.meta.env.PROD ? cdn(url, w, h) : url;
+}
+function cardSrcset(url) {
+  if (!import.meta.env.PROD) return undefined;
+  const widths = [360, 480, 640, 800];
+  return widths.map(w => `${cdn(url, w, Math.round(w * 0.75))} ${w}w`).join(", ");
+}
+
+/* Fetch rows */
 const url = import.meta.env.PUBLIC_SHEET_JSON;
 let rows = [];
 try {
@@ -24,38 +52,43 @@ try {
   rows = [{ _slug:"", title:"Fallback", desc:"Sheet didn’t load.", img:"" }];
 }
 
-/* ---------- image helpers ----------
-   - dev: serve raw files from /images/...
-   - prod (Netlify): use Image CDN to deliver right-sized images
------------------------------------- */
-function rawPath(img) {
-  if (!img) return "";
-  return img.startsWith("http") ? img : "/images/" + img;
-}
-function cdn(url, w, h) {
-  return `/.netlify/images?url=${encodeURIComponent(url)}&w=${w}${h ? `&h=${h}&fit=cover` : "&fit=cover"}`;
-}
-function cardSrc(url, w=480, h=360) {
-  // default smaller base (not 800) so Lighthouse stops flagging “bigger than needed”
-  return import.meta.env.PROD ? cdn(url, w, h) : url;
-}
-function cardSrcset(url) {
-  if (!import.meta.env.PROD) return undefined;
-  // candidates tuned to our column widths
-  const widths = [360, 480, 640, 800];
-  return widths.map(w => `${cdn(url, w, Math.round(w*0.75))} ${w}w`).join(", ");
-}
+/* Pick a random hero image from rows with images (fallback to montane.webp if none) */
+const heroCandidates = rows.filter(r => r.img);
+const heroPick = heroCandidates.length
+  ? heroCandidates[Math.floor(Math.random() * heroCandidates.length)]
+  : null;
+const heroRaw = heroPick ? rawPath(heroPick.img) : "/images/montane.webp";
+const heroSrcUrl = heroRaw ? heroSrc(heroRaw) : "";
+const heroSet = heroRaw ? heroSrcSet(heroRaw) : undefined;
+const heroAlt = heroPick?.title ?? "Neighbourhoods";
+const heroW = 1600, heroH = 900;
 
-/* Precise sizes:
-   - container max width = 72rem; we use 16px base → 72*16 = 1152px
-   - container has 16px left + 16px right padding → 32px total
-   - 3 cols ≥ 960px: (min(1152, vw) - 32) / 3   ≈ 373px at max
-   - 2 cols ≥ 640px: (min(1152, vw) - 32) / 2   ≈ 560px at max
-   - 1 col < 640px:  (min(1152, vw) - 32)       ≈ vw - 32px
-*/
+/* Precise card sizes (matches your 3/2/1 column grid and container padding) */
 const SIZES = "(min-width: 960px) calc((min(72rem, 100vw) - 32px) / 3), (min-width: 640px) calc((min(72rem, 100vw) - 32px) / 2), calc(min(72rem, 100vw) - 32px)";
 ---
 <Site title={title} description={description} active="neighbourhoods">
+  <!-- Preload random hero for better LCP -->
+  {heroSrcUrl && <link slot="head" rel="preload" as="image" href={heroSrcUrl} fetchpriority="high" />}
+
+  <!-- Full-bleed 40vh hero under sticky nav -->
+  <div slot="hero">
+    <style>
+      .hero40{width:100%;height:40vh;object-fit:cover;display:block;border-bottom:1px solid #eee}
+    </style>
+    {heroSrcUrl && (
+      <img
+        class="hero40"
+        src={heroSrcUrl}
+        srcset={heroSet}
+        sizes="100vw"
+        alt={heroAlt}
+        width={heroW} height={heroH}
+        fetchpriority="high"
+        decoding="async"
+      />
+    )}
+  </div>
+
   <style>
     .grid{display:grid;gap:16px;grid-template-columns:1fr}
     @media (min-width:640px){.grid{grid-template-columns:repeat(2,1fr)}}
@@ -66,8 +99,6 @@ const SIZES = "(min-width: 960px) calc((min(72rem, 100vw) - 32px) / 3), (min-wid
           transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;}
     @media (hover:hover){.card:hover{transform:translateY(-4px);box-shadow:0 8px 24px rgba(0,0,0,.08);border-color:#e6e6e6}}
     .card a{display:block;color:inherit;text-decoration:none}
-
-    /* reserve space to prevent CLS */
     .card img{width:100%;height:auto;display:block;aspect-ratio:4/3;object-fit:cover}
     .inner{padding:12px}
     .inner h3{margin:6px 0;font-size:18px}
@@ -79,8 +110,8 @@ const SIZES = "(min-width: 960px) calc((min(72rem, 100vw) - 32px) / 3), (min-wid
   <section class="grid" aria-label="Neighbourhoods list">
     {rows.map((n, i) => {
       const raw = rawPath(n.img);
-      const src = cardSrc(raw, 480, 360);        // base candidate ~480×360
-      const srcset = cardSrcset(raw);
+      const src = raw ? cardSrc(raw, 480, 360) : "";
+      const srcset = raw ? cardSrcset(raw) : undefined;
       return (
         <article class="card">
           <a href={n._slug ? `/neighbourhoods/${n._slug}` : "#"}>
@@ -90,8 +121,8 @@ const SIZES = "(min-width: 960px) calc((min(72rem, 100vw) - 32px) / 3), (min-wid
                 srcset={srcset}
                 sizes={SIZES}
                 alt={n.title}
-                width="800" height="600"                 /* keeps aspect for CLS */
-                loading={i === 0 ? "eager" : "lazy"}     /* only 1st card eager */
+                width="800" height="600"
+                loading={i === 0 ? "eager" : "lazy"}
                 fetchpriority={i === 0 ? "high" : undefined}
                 decoding="async"
               />
