@@ -38,92 +38,152 @@ const heroW = 1600, heroH = 900;
 const pills = Array.isArray(item.pills)
   ? item.pills.filter(Boolean)
   : String(item.pills ?? "").split(",").map(s=>s.trim()).filter(Boolean);
+
+/* quick facts content (fallbacks if not present) */
+const factVibe   = item.vibe   || "Quiet, outdoorsy, family-friendly";
+const factTrails = item.trails || "5+ trailheads within 10 min";
+const factAccess = item.access || "7 min to Downtown, on bus route";
 ---
+
 <Site title={pageTitle} description={description} active="neighbourhoods">
   {raw && <link slot="head" rel="preload" as="image" href={heroSrc(raw)} fetchpriority="high" />}
 
-  <!-- 55vh hero with overlay title aligned to header/logo -->
+  <!-- HERO -->
   <div slot="hero" class="hero-wrap">
     <style>
       .hero-wrap { position:relative; height:55vh; }
       .hero-img  { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
       .shade     { position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.15)); }
-
       .hero-text { position:absolute; inset:0; display:flex; align-items:flex-end; }
-
-      /* Align to SAME left/right as the header/logo container */
-      :root { /* ensure these exist in Site.astro too */
-        --max: 72rem;
-        --pad: 16px;
-      }
+      :root { --max: 72rem; --pad: 16px; }
       .hero-side {
-        box-sizing: border-box;
-        width: 100%;
-        /* container math: centered max + gutters */
-        padding-left:  calc(max((100vw - var(--max)) / 2, 0px) + var(--pad));
-        padding-right: calc(max((100vw - var(--max)) / 2, 0px) + var(--pad));
-        padding-bottom: calc(var(--pad) * 2);
+        box-sizing:border-box;
+        width:100%;
+        padding-left:calc(max((100vw - var(--max))/2,0px) + var(--pad));
+        padding-right:calc(max((100vw - var(--max))/2,0px) + var(--pad));
+        padding-bottom:calc(var(--pad) * 2);
         color:#fff;
       }
-      .hero-title { margin:0; font-size:clamp(28px,5vw,44px); line-height:1.15; text-shadow:0 2px 18px rgba(0,0,0,.35); }
+      .hero-title {
+        margin:0;
+        font-size:clamp(28px,5vw,44px);
+        line-height:1.15;
+        text-shadow:0 2px 18px rgba(0,0,0,.35);
+      }
     </style>
 
     {raw ? (
       <>
-        <img
-          class="hero-img"
-          src={heroSrc(raw)}
-          srcset={heroSrcSet(raw)}
-          sizes="100vw"
-          alt={item.title}
-          width={heroW} height={heroH}
-          fetchpriority="high"
-          decoding="async"
-        />
+        <img class="hero-img" src={heroSrc(raw)} srcset={heroSrcSet(raw)} sizes="100vw"
+             alt={item.title} width={heroW} height={heroH} fetchpriority="high" decoding="async" />
         <div class="shade"></div>
-        <div class="hero-text">
-          <div class="hero-side">
-            <h1 class="hero-title">{item.title}</h1>
-          </div>
-        </div>
+        <div class="hero-text"><div class="hero-side"><h1 class="hero-title">{item.title}</h1></div></div>
       </>
     ) : (
-      <div class="hero-text">
-        <div class="hero-side">
-          <h1 class="hero-title">{item.title}</h1>
-        </div>
-      </div>
+      <div class="hero-text"><div class="hero-side"><h1 class="hero-title">{item.title}</h1></div></div>
     )}
   </div>
 
   <style>
-    .lede{color:#444;margin:8px 0 16px}
-    .back{display:inline-block;margin:12px 0 16px;text-decoration:none;color:#111;border:1px solid #111;padding:8px 12px;border-radius:10px}
+    .back {
+      display:inline-block;
+      margin:12px 0 16px;
+      text-decoration:none;
+      color:#111;
+      border:1px solid #111;
+      padding:8px 12px;
+      border-radius:10px;
+    }
 
-    .pills{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px}
-    .pill{border:1px solid #ddd;border-radius:999px;padding:4px 10px;font-size:12px;color:#444;background:#fff}
+    /* Card styling */
+    .card {
+      border: 1px solid #cbd5e1;
+      border-radius: 14px;
+      box-shadow: 0 4px 10px rgba(0,0,0,.08);
+      background: #fff;
+      margin: 24px 0;
+      overflow: hidden;
+    }
+    .card h2 {
+      margin: 0;
+      padding: 16px;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: 18px;
+      color: #334155;
+    }
+    .card-body { padding: 16px; }
 
-    .card{border:1px solid #eee;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);background:#fff;overflow:hidden}
-    .card h2{margin:0;padding:16px;border-bottom:1px solid #eee;font-size:18px;color:#6b7280;}
-    .card-body{padding:16px}
-
+    .pills {
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin:0 0 12px;
+    }
+    .pill {
+      border:1px solid #ddd;
+      border-radius:999px;
+      padding:4px 10px;
+      font-size:12px;
+      color:#444;
+      background:#fff;
+    }
     .content :where(h2,h3){margin-top:1.2em}
+
+    /* Quick Facts (3-up) */
+    .facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:24px 0}
+    .fact{display:flex;gap:12px;align-items:flex-start;border:1px solid #e5e7eb;border-radius:14px;background:#fff;
+          box-shadow:0 2px 8px rgba(0,0,0,.06);padding:14px}
+    .fact h3{margin:0 0 2px;font-size:14px;color:#0f172a}
+    .fact p{margin:0;color:#475569;font-size:13px}
+    .ico{font-size:20px;line-height:1}
+    @media (max-width:820px){ .facts{grid-template-columns:1fr} }
   </style>
 
   <a class="back" href="/neighbourhoods">← Back to neighbourhoods</a>
 
-  {pills.length > 0 && (
-    <div class="pills" aria-label="Highlights">
-      {pills.map(p => <span class="pill">{p}</span>)}
-    </div>
-  )}
+  <!-- QUICK FACTS -->
+  <section class="facts" aria-label="Quick facts">
+    <article class="fact"><div class="ico">🏔️</div><div><h3>Vibe</h3><p>{factVibe}</p></div></article>
+    <article class="fact"><div class="ico">🚲</div><div><h3>Trails</h3><p>{factTrails}</p></div></article>
+    <article class="fact"><div class="ico">🚌</div><div><h3>Access</h3><p>{factAccess}</p></div></article>
+  </section>
 
-  {item.desc && <p class="lede">{item.desc}</p>}
-
-  <section class="card" aria-labelledby="about-title">
-    <h2 id="about-title">About {item.title} Neighbourhood</h2>
+  <!-- CARD WITH PILLS + DESC -->
+  <section class="card" aria-labelledby="desc-title">
+    <h2 id="desc-title">{item.title} Overview</h2>
     <div class="card-body">
-      <section class="content" set:html={item.about}></section>
+      {pills.length > 0 && (
+        <div class="pills" aria-label="Highlights">
+          {pills.map(p => <span class="pill">{p}</span>)}
+        </div>
+      )}
+      <p>{item.desc}</p>
     </div>
   </section>
+
+  <!-- OPTIONAL ABOUT CARD (only renders if about has content) -->
+  {item.about && (
+    <section class="card" aria-labelledby="about-title">
+      <h2 id="about-title">About {item.title}</h2>
+      <div class="card-body">
+        <section class="content" set:html={item.about}></section>
+      </div>
+    </section>
+  )}
+
+  <!-- OPTIONAL MAP CARD (only if item.map provided) -->
+  {item.map && (
+    <section class="card" aria-labelledby="map-title">
+      <h2 id="map-title">Map</h2>
+      <div class="card-body">
+        <iframe
+          src={item.map}
+          loading="lazy"
+          width="100%" height="320"
+          style="border:0;border-radius:12px;"
+          allowfullscreen
+          referrerpolicy="no-referrer-when-downgrade"></iframe>
+      </div>
+    </section>
+  )}
 </Site>
