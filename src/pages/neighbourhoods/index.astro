@@ -5,58 +5,127 @@ const title = "Neighbourhoods — Fernie";
 const description = "Browse Fernie neighbourhoods (data from Google Sheets).";
 
 /* helpers */
-function slugify(s=""){return String(s).toLowerCase().trim().replace(/&/g,"-and-").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");}
-async function fetchSheet(url){ if(!url) throw new Error("PUBLIC_SHEET_JSON missing."); const r=await fetch(url,{cache:"no-store"}); return r.json(); }
+function slugify(s=""){
+  return String(s).toLowerCase().trim()
+    .replace(/&/g,"-and-").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+}
+async function fetchSheet(url){
+  if(!url) throw new Error("PUBLIC_SHEET_JSON missing.");
+  const r = await fetch(url, { cache: "no-store" });
+  return r.json();
+}
 
-/* img helpers */
-function rawPath(img){ if(!img) return ""; return img.startsWith("http")?img:"/images/"+img; }
+/* image helpers */
+function rawPath(img){ return img ? (img.startsWith("http") ? img : "/images/" + img) : ""; }
 function cdn(u,w,h){ return `/.netlify/images?url=${encodeURIComponent(u)}&w=${w}${h?`&h=${h}&fit=cover`:"&fit=cover"}`; }
+
+/* hero helpers */
 function heroSrc(u){ return import.meta.env.PROD ? cdn(u,1600,900) : u; }
-function heroSrcSet(u){ if(!import.meta.env.PROD) return undefined; const ws=[960,1280,1600,1920]; return ws.map(w=>`${cdn(u,w,Math.round(w*0.5625))} ${w}w`).join(", "); }
+function heroSrcSet(u){
+  if(!import.meta.env.PROD) return undefined;
+  const ws=[960,1280,1600,1920];
+  return ws.map(w=>`${cdn(u,w,Math.round(w*0.5625))} ${w}w`).join(", ");
+}
+
+/* card helpers (thin cards ≈ 19/10) */
 const CARD_H_FACTOR = 10/19;
 function cardSrc(u,w=480){ const h=Math.round(w*CARD_H_FACTOR); return import.meta.env.PROD ? cdn(u,w,h) : u; }
-function cardSrcset(u){ if(!import.meta.env.PROD) return undefined; const ws=[360,480,640,800]; return ws.map(w=>`${cdn(u,w,Math.round(w*CARD_H_FACTOR))} ${w}w`).join(", "); }
+function cardSrcset(u){
+  if(!import.meta.env.PROD) return undefined;
+  const ws=[360,480,640,800];
+  return ws.map(w=>`${cdn(u,w,Math.round(w*CARD_H_FACTOR))} ${w}w`).join(", ");
+}
 
+/* load data */
 const url = import.meta.env.PUBLIC_SHEET_JSON;
 let rows = [];
-try { const raw=await fetchSheet(url); rows=raw.map(n=>({...n,_slug:(n.slug?.trim()||slugify(n.title||""))})); }
-catch { rows=[{_slug:"",title:"Fallback",desc:"Sheet didn’t load.",img:""}]; }
+try {
+  const raw = await fetchSheet(url);
+  rows = raw.map(n => ({...n, _slug: (n.slug?.trim() || slugify(n.title || ""))}));
+} catch {
+  rows = [{ _slug: "", title: "Fallback", desc: "Sheet didn’t load.", img: "" }];
+}
 
+/* random hero image from rows (fallback to a static) */
 const heroCandidates = rows.filter(r=>r.img);
 const heroPick = heroCandidates.length ? heroCandidates[Math.floor(Math.random()*heroCandidates.length)] : null;
 const heroRaw = heroPick ? rawPath(heroPick.img) : "/images/montane.webp";
 const heroSrcUrl = heroSrc(heroRaw);
 const heroSet = heroSrcSet(heroRaw);
+const heroAlt = heroPick?.title ?? "Neighbourhoods";
 const heroW = 1600, heroH = 900;
 
+/* card sizes */
 const SIZES = "(min-width: 960px) calc((min(72rem, 100vw) - 32px) / 3), (min-width: 640px) calc((min(72rem, 100vw) - 32px) / 2), calc(min(72rem, 100vw) - 32px)";
 ---
 <Site title={title} description={description} active="neighbourhoods">
   {heroSrcUrl && <link slot="head" rel="preload" as="image" href={heroSrcUrl} fetchpriority="high" />}
 
-  <div slot="hero">
+  <!-- 55vh hero -->
+  <div slot="hero" class="hero-wrap">
     <style>
-      .hero40{ width:100%; height:40vh; object-fit:cover; display:block; border-bottom:1px solid #eee; }
+      .hero-wrap { position:relative; height:55vh; }
+      .hero-img  { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+      .shade     { position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.15)); }
+
+      .hero-text { position:absolute; inset:0; display:flex; align-items:flex-end; }
+      .hero-side {
+        padding-left:  calc(max((100vw - var(--max)) / 2, 0px) + var(--pad));
+        padding-right: calc(max((100vw - var(--max)) / 2, 0px) + var(--pad));
+        padding-bottom: calc(var(--pad) * 2);
+        width:100%;
+        color:#fff;
+      }
+      .hero-title { margin:0; font-size:clamp(28px,5vw,44px); line-height:1.15; text-shadow:0 2px 18px rgba(0,0,0,.35); }
     </style>
+
     <img
-      class="hero40"
+      class="hero-img"
       src={heroSrcUrl}
       srcset={heroSet}
       sizes="100vw"
-      alt="Neighbourhoods"
+      alt={heroAlt}
       width={heroW} height={heroH}
       fetchpriority="high"
       decoding="async"
     />
+    <div class="shade"></div>
+    <div class="hero-text">
+      <div class="hero-side">
+        <h1 class="hero-title">Neighbourhoods</h1>
+      </div>
+    </div>
   </div>
+
+  <!-- INTRO AS A FULL-WIDTH CARD WITH STRONGER BORDER -->
+  <section class="intro-card">
+    <style>
+      .intro-card {
+        max-width: var(--max);
+        margin: 2rem auto;
+        background: #fff;
+        border: 2px solid #ccc; /* Thicker + darker border */
+        border-radius: 14px;
+        box-shadow: 0 2px 6px rgba(0,0,0,.08); /* Slightly stronger shadow */
+        padding: 1.75rem 1.5rem;
+      }
+      .intro-card p {
+        margin: 0;
+        font-size: 1.125rem;
+        line-height: 1.6;
+        color: #222;
+      }
+    </style>
+    <p>Fernie’s neighbourhoods offer a diverse mix of mountain living options, from ski-in/ski-out homes near Fernie Alpine Resort to quiet family-friendly streets and vibrant downtown condos. Each area has its own character—Montane is perfect for outdoor enthusiasts with trail access, Riverside offers river views, and Ridgemont has a central location close to schools. Whether you’re seeking a weekend retreat, full-time home, or investment property, Fernie’s neighbourhoods provide something for every lifestyle while keeping you close to stunning scenery and year-round recreation.</p>
+  </section>
 
   <style>
     .grid{display:grid;gap:16px;grid-template-columns:1fr}
     @media (min-width:640px){.grid{grid-template-columns:repeat(2,1fr)}}
     @media (min-width:960px){.grid{grid-template-columns:repeat(3,1fr)}}
 
-    .card{border:1px solid #eee;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04);transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;}
-    @media (hover:hover){.card:hover{transform:translateY(-4px);box-shadow:0 8px 24px rgba(0,0,0,.08);border-color:#e6e6e6}}
+    .card{border:1px solid #ddd;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04);transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;}
+    @media (hover:hover){.card:hover{transform:translateY(-4px);box-shadow:0 8px 24px rgba(0,0,0,.08);border-color:#ccc}}
     .card a{display:block;color:inherit;text-decoration:none}
 
     .thumb{aspect-ratio:19/10;width:100%;overflow:hidden}
@@ -66,8 +135,6 @@ const SIZES = "(min-width: 960px) calc((min(72rem, 100vw) - 32px) / 3), (min-wid
     .inner h3{margin:6px 0;font-size:18px}
     .inner p{margin:0 0 8px;color:#444}
   </style>
-
-  <h1>Neighbourhoods</h1>
 
   <section class="grid" aria-label="Neighbourhoods list">
     {rows.map((n, i) => {
