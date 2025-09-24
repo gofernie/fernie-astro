@@ -1,0 +1,194 @@
+---
+import Site from "../../layouts/Site.astro";
+
+/* Page meta */
+const title = "Property Types — Fernie";
+const description = "Browse Fernie property types (data from Google Sheets).";
+
+/* helpers */
+function slugify(s=""){
+  return String(s).toLowerCase().trim()
+    .replace(/&/g,"-and-").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+}
+async function fetchSheet(url){
+  if(!url) throw new Error("PUBLIC_TYPES_JSON missing.");
+  const r = await fetch(url, { cache: "no-store" });
+  return r.json();
+}
+
+/* image helpers (point to /images/types) */
+function rawPath(img){
+  if(!img) return "";
+  const s = String(img).trim();
+  if (s.startsWith("http")) return s;
+  // allow either bare filename or nested path under /images/types
+  return s.startsWith("/images/") ? s : "/images/types/" + s.replace(/^\/+/, "");
+}
+function cdn(u,w,h){ return `/.netlify/images?url=${encodeURIComponent(u)}&w=${w}${h?`&h=${h}&fit=cover`:"&fit=cover"}`; }
+
+/* hero helpers */
+function heroSrc(u){ return import.meta.env.PROD ? cdn(u,1600,900) : u; }
+function heroSrcSet(u){
+  if(!import.meta.env.PROD) return undefined;
+  const ws=[960,1280,1600,1920];
+  return ws.map(w=>`${cdn(u,w,Math.round(w*0.5625))} ${w}w`).join(", ");
+}
+
+/* card helpers (thin cards ≈ 19/10, same as neighbourhoods) */
+const CARD_H_FACTOR = 10/19;
+function cardSrc(u,w=480){ const h=Math.round(w*CARD_H_FACTOR); return import.meta.env.PROD ? cdn(u,w,h) : u; }
+function cardSrcset(u){
+  if(!import.meta.env.PROD) return undefined;
+  const ws=[360,480,640,800];
+  return ws.map(w=>`${cdn(u,w,Math.round(w*CARD_H_FACTOR))} ${w}w`).join(", ");
+}
+
+/* load data from PUBLIC_TYPES_JSON */
+const url = import.meta.env.PUBLIC_TYPES_JSON;
+let rows = [];
+try {
+  const raw = await fetchSheet(url);
+  // Normalize and ensure we have a slug from `type`
+  rows = raw
+    .map(t => {
+      const label = (t.type ?? t.Type ?? t.title ?? "").trim();
+      const _slug = (t.slug?.trim() || slugify(label));
+      return { ...t, _label: label, _slug };
+    })
+    .filter(t => (String(t.published ?? "").toLowerCase() === "true") && t._label);
+} catch {
+  rows = [{ _slug: "", _label: "Fallback", desc: "Sheet didn’t load.", img: "" }];
+}
+
+/* random hero image from rows (fallback to a static) */
+const heroCandidates = rows.filter(r=>r.img);
+const heroPick = heroCandidates.length ? heroCandidates[Math.floor(Math.random()*heroCandidates.length)] : null;
+const heroRaw = heroPick ? rawPath(heroPick.img) : "/images/types/fernie-homes.webp";
+const heroSrcUrl = heroSrc(heroRaw);
+const heroSet = heroSrcSet(heroRaw);
+const heroAlt = "Property Types";
+const heroW = 1600, heroH = 900;
+
+/* card sizes */
+const SIZES = "(min-width: 960px) calc((min(72rem, 100vw) - 32px) / 3), (min-width: 640px) calc((min(72rem, 100vw) - 32px) / 2), calc(min(72rem, 100vw) - 32px)";
+---
+
+<Site title={title} description={description} active="types">
+  {heroSrcUrl && <link slot="head" rel="preload" as="image" href={heroSrcUrl} fetchpriority="high" />}
+
+  <!-- 55vh hero (identical pattern) -->
+  <div slot="hero" class="hero-wrap">
+    <style>
+      .hero-wrap { position:relative; height:55vh; }
+      .hero-img  { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+      .shade     { position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.15)); }
+
+      .hero-text { position:absolute; inset:0; display:flex; align-items:flex-end; }
+      .hero-side {
+        padding-left:  calc(max((100vw - var(--max)) / 2, 0px) + var(--pad));
+        padding-right: calc(max((100vw - var(--max)) / 2, 0px) + var(--pad));
+        padding-bottom: calc(var(--pad) * 2);
+        width:100%;
+        color:#fff;
+      }
+      .hero-title { margin:0; font-size:clamp(28px,5vw,44px); line-height:1.15; text-shadow:0 2px 18px rgba(0,0,0,.35); }
+    </style>
+
+    <img
+      class="hero-img"
+      src={heroSrcUrl}
+      srcset={heroSet}
+      sizes="100vw"
+      alt={heroAlt}
+      width={heroW} height={heroH}
+      fetchpriority="high"
+      decoding="async"
+    />
+    <div class="shade"></div>
+    <div class="hero-text">
+      <div class="hero-side">
+        <h1 class="hero-title">Property Types</h1>
+      </div>
+    </div>
+  </div>
+
+  <!-- INTRO (full-width card w/ stronger border, just like neighbourhoods) -->
+  <section class="intro-card">
+    <style>
+      .intro-card {
+        max-width: var(--max);
+        margin: 2rem auto;
+        background: #fff;
+        border: 2px solid #ccc;
+        border-radius: 14px;
+        box-shadow: 0 2px 6px rgba(0,0,0,.08);
+        padding: 1.75rem 1.5rem;
+      }
+      .intro-card p {
+        margin: 0;
+        font-size: 1.125rem;
+        line-height: 1.6;
+        color: #222;
+      }
+    </style>
+    <p>Explore Fernie’s property types—from ski-hill condos and lock-and-leave townhomes to family houses and acreages. Each type has different pros, cons, and typical locations. Use these cards to jump into the details.</p>
+  </section>
+
+  <!-- Cards grid (identical layout) -->
+  <style>
+    .grid{display:grid;gap:16px;grid-template-columns:1fr}
+    @media (min-width:640px){.grid{grid-template-columns:repeat(2,1fr)}}
+    @media (min-width:960px){.grid{grid-template-columns:repeat(3,1fr)}}
+
+    .card{border:1px solid #ddd;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.04);transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;}
+    @media (hover:hover){.card:hover{transform:translateY(-4px);box-shadow:0 8px 24px rgba(0,0,0,.08);border-color:#ccc}}
+    .card a{display:block;color:inherit;text-decoration:none}
+
+    .thumb{aspect-ratio:19/10;width:100%;overflow:hidden}
+    .thumb img{width:100%;height:100%;display:block;object-fit:cover}
+
+    .inner{padding:12px}
+    .inner h3{margin:6px 0;font-size:18px}
+    .inner p{margin:0 0 8px;color:#444}
+  </style>
+
+  <section class="grid" aria-label="Property types list">
+    {rows.map((t, i) => {
+      // Prefer explicit img column; otherwise try "<slug>.webp" under /images/types
+      const localFallback = t._slug ? `/images/types/${t._slug}.webp` : "";
+      const raw = rawPath(t.img || localFallback);
+      const src = raw ? cardSrc(raw, 480) : "";
+      const srcset = raw ? cardSrcset(raw) : undefined;
+
+      // 22-word excerpt from description/about
+      const full = String(t.description ?? t.about ?? "").trim();
+      const words = full.split(/\s+/).filter(Boolean);
+      const desc = words.slice(0, 22).join(" ") + (words.length > 22 ? "…" : "");
+
+      return (
+        <article class="card">
+          <a href={t._slug ? `/types/${t._slug}` : "#"}>
+            {raw && (
+              <div class="thumb">
+                <img
+                  src={src}
+                  srcset={srcset}
+                  sizes={SIZES}
+                  alt={t._label}
+                  width="800" height="421"
+                  loading={i === 0 ? "eager" : "lazy"}
+                  fetchpriority={i === 0 ? "high" : undefined}
+                  decoding="async"
+                />
+              </div>
+            )}
+            <div class="inner">
+              <h3>{t._label}</h3>
+              <p>{desc}</p>
+            </div>
+          </a>
+        </article>
+      );
+    })}
+  </section>
+</Site>

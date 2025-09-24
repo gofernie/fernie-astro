@@ -1,0 +1,43 @@
+---
+// src/pages/listings/mrp.astro
+import Site from "../../layouts/Site.astro";
+
+const title = "Fernie Listings (MRP Embed)";
+const description = "Live MLS® listings shown via myRealPage showcase.";
+---
+
+<Site title={title} description={description} active="listings">
+  <section class="mx-auto max-w-6xl px-4 py-8">
+    <h1 class="text-3xl font-semibold mb-6">Fernie Listings</h1>
+
+    <!-- Wrapper so we can style around the embed -->
+    <div class="rounded-2xl border border-zinc-200 bg-white">
+      <!-- Optional header / filters you control -->
+      <div class="px-4 py-3 border-b border-zinc-200">
+        <p class="text-sm text-zinc-600">
+          Powered by myRealPage showcase. Results load instantly below.
+        </p>
+      </div>
+
+      <!-- Embed area -->
+      <div class="p-0">
+        <!-- Your exact embed snippet -->
+        <script
+          src="https://idx.myrealpage.com/wps/rest/64196/l/showcase/v2/129176/in.js"
+          async
+          id="mrp-showcase-script-129176">
+        </script>
+
+        <!-- (Nice-to-have) minimal space reservation to reduce layout shift -->
+        <div style="min-height: 60vh"></div>
+
+        <!-- Fallback if JS is disabled -->
+        <noscript>
+          <div class="p-4 text-sm text-zinc-600">
+            JavaScript is required to view listings. Please enable it and refresh.
+          </div>
+        </noscript>
+      </div>
+    </div>
+  </section>
+</Site>

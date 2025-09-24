@@ -2,12 +2,14 @@
 const {
   title = "Fernie Real Estate",
   description = "",
-  active = "", // "home" | "neighbourhoods" | ...
+  active = "", // "home" | "neighbourhoods" | "types" | "listings" | ...
 } = Astro.props;
 
 const nav = [
   { href: "/", label: "Home", key: "home" },
   { href: "/neighbourhoods", label: "Neighbourhoods", key: "neighbourhoods" },
+  { href: "/types", label: "Types", key: "types" },          // ✅ Added
+  { href: "/listings", label: "Listings", key: "listings" }, // ✅ Added
   { href: "#", label: "Buy", key: "buy" },
   { href: "#", label: "Sell", key: "sell" },
   { href: "#", label: "Contact", key: "contact" },
@@ -73,7 +75,6 @@ const nav = [
     <header class="site-header">
       <div class="container bar">
         <a class="brand" href="/" aria-label="Home">
-          <!-- Serve from /public/logo.svg; if missing, swap to text so no 404 shows -->
           <img
             src="/logo.svg"
             alt="Fernie Real Estate"
@@ -124,7 +125,6 @@ const nav = [
         btn.setAttribute('aria-expanded', String(!open));
         menu.style.display = !open ? 'block' : 'none';
       });
-      // Close on outside click
       document.addEventListener('click', (e) => {
         if (!menu || !btn) return;
         const open = menu.getAttribute('data-open') === 'true';
@@ -135,7 +135,6 @@ const nav = [
           menu.style.display = 'none';
         }
       });
-      // Close on escape
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && menu?.getAttribute('data-open') === 'true') {
           menu.setAttribute('data-open', 'false');

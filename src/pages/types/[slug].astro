@@ -1,0 +1,158 @@
+---
+import Site from "../../layouts/Site.astro";
+
+export async function getStaticPaths() {
+  const url = import.meta.env.PUBLIC_TYPES_JSON;
+  if (!url) return [];
+
+  const res = await fetch(url);
+  const data = await res.json();
+
+  const items = data.map((t) => {
+    const label = String(t.type ?? t.Type ?? t.title ?? "").trim();
+
+    // Inline slug generation
+    const computed = label
+      .toLowerCase()
+      .replace(/&/g, "-and-")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+    const _slug = t.slug?.trim() || computed;
+
+    return { ...t, _label: label, _slug };
+  });
+
+  return items
+    .filter((t) => t._slug)
+    .map((t) => ({
+      params: { slug: t._slug },
+      props: { item: { ...t, type: t._label, slug: t._slug } },
+    }));
+}
+
+const { item } = Astro.props;
+
+/* ✅ meta uses desc/description; About uses ONLY about/About */
+const overviewText = String(item.desc ?? item.description ?? "").trim();
+const aboutHtml    = item.about ?? item.About ?? "";
+
+const pageTitle   = `${item.type} — Fernie Property Type`;
+const description = overviewText || `About ${item.type}`;
+
+/* image helpers -> /images/types */
+function rawPath(img) {
+  if (!img) return "";
+  const s = String(img).trim();
+  if (s.startsWith("http")) return s;
+  return s.startsWith("/images/") ? s : "/images/types/" + s.replace(/^\/+/, "");
+}
+function cdn(url, w, h) {
+  return `/.netlify/images?url=${encodeURIComponent(url)}&w=${w}${
+    h ? `&h=${h}&fit=cover` : "&fit=cover"
+  }`;
+}
+function heroSrc(url) { return import.meta.env.PROD ? cdn(url, 1600, 900) : url; }
+function heroSrcSet(url) {
+  if (!import.meta.env.PROD) return undefined;
+  const widths = [960, 1280, 1600, 1920];
+  return widths.map((w) => `${cdn(url, w, Math.round(w * 0.5625))} ${w}w`).join(", ");
+}
+
+/* hero: explicit img or /images/types/<slug>.webp */
+const chosen = item.img ? rawPath(item.img) : (item.slug ? `/images/types/${item.slug}.webp` : "");
+const raw = chosen || "";
+const heroW = 1600, heroH = 900;
+
+/* optional quick facts */
+const factVibe  = item.vibe  || "Fits a range of lifestyles";
+const factAreas = item.areas || "Common in several Fernie neighbourhoods";
+const factNotes = item.notes || "See details and tips below";
+---
+
+<Site title={pageTitle} description={description} active="types">
+  {raw && <link slot="head" rel="preload" as="image" href={heroSrc(raw)} fetchpriority="high" />}
+
+  <!-- HERO (same as neighbourhoods) -->
+  <div slot="hero" class="hero-wrap">
+    <style>
+      .hero-wrap { position:relative; height:55vh; }
+      .hero-img  { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+      .shade     { position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.15)); }
+      .hero-text { position:absolute; inset:0; display:flex; align-items:flex-end; }
+      :root { --max: 72rem; --pad: 16px; }
+      .hero-side {
+        box-sizing:border-box; width:100%;
+        padding-left:calc(max((100vw - var(--max))/2,0px) + var(--pad));
+        padding-right:calc(max((100vw - var(--max))/2,0px) + var(--pad));
+        padding-bottom:calc(var(--pad) * 2); color:#fff;
+      }
+      .hero-title { margin:0; font-size:clamp(28px,5vw,44px); line-height:1.15; text-shadow:0 2px 18px rgba(0,0,0,.35); }
+    </style>
+
+    {raw ? (
+      <>
+        <img class="hero-img" src={heroSrc(raw)} srcset={heroSrcSet(raw)} sizes="100vw"
+             alt={item.type} width={heroW} height={heroH} fetchpriority="high" decoding="async" />
+        <div class="shade"></div>
+        <div class="hero-text"><div class="hero-side"><h1 class="hero-title">Fernie {item.type} For Sale</h1></div></div>
+      </>
+    ) : (
+      <div class="hero-text"><div class="hero-side"><h1 class="hero-title">{item.type}</h1></div></div>
+    )}
+  </div>
+
+  <style>
+    .back { display:inline-block; margin:12px 0 16px; text-decoration:none; color:#111; border:1px solid #111; padding:8px 12px; border-radius:10px; }
+    .card { border:1px solid #cbd5e1; border-radius:14px; box-shadow:0 4px 10px rgba(0,0,0,.08); background:#fff; margin:24px 0; overflow:hidden; }
+    .card h2 { margin:0; padding:16px; border-bottom:1px solid #e5e7eb; font-size:18px; color:#334155; }
+    .card-body { padding:16px; }
+    .content :where(h2,h3){margin-top:1.2em}
+    .qfacts-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:16px; margin:24px 0; }
+    .qfact { border:1px solid #cbd5e1; border-radius:14px; background:#fff; box-shadow:0 4px 10px rgba(0,0,0,.08); }
+    .qfact .qbody { padding:12px 14px; }
+    .qfact .title { display:flex; align-items:center; gap:8px; font-weight:700; color:#111827; margin:0 0 4px; font-size:14px; }
+    .qfact p { margin:0; font-size:13px; color:#475569; }
+    .cta { background:#f0f6ff; border-color:#bfdbfe; }
+    .cta .card-body { text-align:center; }
+    .cta .cta-button { display:inline-block; background:#0971ce; color:#fff; font-weight:600; padding:12px 24px; border-radius:8px; text-decoration:none; transition: background .2s ease, transform .2s ease; }
+    .cta .cta-button:hover { background:#0757a6; transform:translateY(-1px); }
+  </style>
+
+  <a class="back" href="/types">← Back to property types</a>
+
+  <!-- OVERVIEW (uses desc/description ONLY) -->
+  {overviewText && (
+    <section class="card" aria-labelledby="desc-title">
+      <h2 id="desc-title">Discover the Best {item.type} in Fernie</h2>
+      <div class="card-body"><p>{overviewText}</p></div>
+    </section>
+  )}
+
+  <!-- QUICK FACTS -->
+  <section class="qfacts-grid" aria-label="Quick facts">
+    <article class="qfact"><div class="qbody"><h3 class="title">🏔️ Vibe</h3><p>{factVibe}</p></div></article>
+    <article class="qfact"><div class="qbody"><h3 class="title">📍 Where you’ll find it</h3><p>{factAreas}</p></div></article>
+    <article class="qfact"><div class="qbody"><h3 class="title">ℹ️ Notes</h3><p>{factNotes}</p></div></article>
+  </section>
+
+  <!-- CTA MOVED HERE -->
+  <section class="card cta">
+    <div class="card-body">
+      <p style="margin:0 0 16px;font-size:16px;color:#1e293b;font-weight:500">
+        See current listings and market info for {item.type}.
+      </p>
+      <a class="cta-button" href={`/search?type=${item.slug}`}>Browse {item.type} →</a>
+    </div>
+  </section>
+
+  <!-- ABOUT (uses about/About ONLY; NEVER desc) -->
+  {aboutHtml && (
+    <section class="card" aria-labelledby="about-title">
+      <h2 id="about-title">About {item.type}</h2>
+      <div class="card-body">
+        <section class="content" set:html={aboutHtml}></section>
+      </div>
+    </section>
+  )}
+</Site>
