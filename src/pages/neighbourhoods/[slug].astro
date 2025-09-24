@@ -1,11 +1,9 @@
 ---
 import Site from "../../layouts/Site.astro";
 
-/* Helpers */
+/* helpers (inline so Netlify can't miss imports) */
 function slugify(s = "") {
-  return String(s)
-    .toLowerCase()
-    .trim()
+  return String(s).toLowerCase().trim()
     .replace(/&/g, "-and-")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
@@ -16,37 +14,30 @@ async function fetchJSON(url) {
   const res = await fetch(url, { cache: "no-store" });
   const text = await res.text();
 
-  if (!res.ok) {
-    throw new Error(`Fetch failed ${res.status}: ${text.slice(0, 160)}`);
-  }
+  if (!res.ok) throw new Error(`Fetch failed ${res.status}: ${text.slice(0,160)}`);
   if (/^<!doctype html>|^<html/i.test(text.trim())) {
-    throw new Error(
-      "PUBLIC_SHEET_JSON returned HTML. Check Apps Script deploy ('Anyone' access) and that the URL includes ?tab=neighbourhoods."
-    );
+    throw new Error("PUBLIC_SHEET_JSON returned HTML. Ensure Apps Script Web App is set to 'Anyone' and URL includes ?tab=neighbourhoods.");
   }
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new Error("Response was not valid JSON. First 160 chars: " + text.slice(0, 160));
-  }
+  try { return JSON.parse(text); }
+  catch { throw new Error("Response was not valid JSON. First 160 chars: " + text.slice(0,160)); }
 }
 
-/* Build-time: generate static pages for each neighbourhood slug */
+/* Build-time: generate static pages for each neighbourhood */
 export async function getStaticPaths() {
-  const url = import.meta.env.PUBLIC_SHEET_JSON; // MUST be .../exec?tab=neighbourhoods
+  const url = import.meta.env.PUBLIC_SHEET_JSON; // must be .../exec?tab=neighbourhoods
   const rows = await fetchJSON(url);
 
   const items = (rows ?? [])
-    .map((r) => {
+    .map(r => {
       const label = String(r.name ?? r.title ?? r.neighbourhood ?? "").trim();
-      const slug = slugify(r.slug ?? label);
-      return { ...r, _label: label, _slug: slug };
+      const _slug = slugify(r.slug ?? label);
+      return { ...r, _label: label, _slug };
     })
-    .filter((r) => r._slug);
+    .filter(r => r._slug);
 
-  return items.map((n) => ({
-    params: { slug: n._slug },
-    props: { item: n },
+  return items.map(item => ({
+    params: { slug: item._slug },
+    props: { item },
   }));
 }
 
@@ -56,24 +47,24 @@ const description = item.desc ?? "";
 const hero = item.hero ?? "/img/hero/fernie-hero.jpg";
 ---
 
-<!-- HERO -->
-<section
-  class="relative h-[55vh] flex items-center justify-center bg-cover bg-center"
-  style={`background-image: url('${hero}');`}
->
-  <div class="absolute inset-0 bg-black/40"></div>
-  <h1 class="relative text-white text-4xl font-semibold drop-shadow-md">
-    {item.name ?? item.title ?? item._label}
-  </h1>
-</section>
-
 <Site title={title} description={description} active="neighbourhoods">
+  <!-- HERO -->
+  <section
+    class="relative h-[55vh] flex items-center items-center justify-center bg-cover bg-center"
+    style={`background-image: url('${hero}');`}
+  >
+    <div class="absolute inset-0 bg-black/40"></div>
+    <h1 class="relative text-white text-4xl font-semibold drop-shadow-md">
+      {item.name ?? item.title ?? item._label}
+    </h1>
+  </section>
+
+  <!-- MAIN -->
   <section class="max-w-4xl mx-auto px-4 py-8 space-y-6">
     {item.desc && (
-      <div class="bg-white rounded-2xl shadow-sm border border-zinc-200 p-6">
+      <div class="bg-white rounded-2xl border border-zinc-200 p-6">
         <p class="text-lg leading-relaxed">{item.desc}</p>
       </div>
     )}
-    <!-- Whatever else you render (maps, cards, etc.) -->
   </section>
 </Site>
