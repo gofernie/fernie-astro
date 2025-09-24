@@ -1,184 +1,79 @@
 ---
 import Site from "../../layouts/Site.astro";
 
-/* slug + data helpers */
-function slugify(s=""){
-  return String(s).toLowerCase().trim()
-    .replace(/&/g,"-and-").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+/* Helpers */
+function slugify(s = "") {
+  return String(s)
+    .toLowerCase()
+    .trim()
+    .replace(/&/g, "-and-")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
-export async function getStaticPaths(){
-  const url = import.meta.env.PUBLIC_SHEET_JSON;
-  if(!url) return [];
-  const res = await fetch(url);
-  const data = await res.json();
-  const items = data.map(n => ({...n, _slug:(n.slug?.trim() || slugify(n.title || ""))}));
-  return items.filter(n=>n._slug).map(n => ({
+
+async function fetchJSON(url) {
+  if (!url) throw new Error("PUBLIC_SHEET_JSON is missing.");
+  const res = await fetch(url, { cache: "no-store" });
+  const text = await res.text();
+
+  if (!res.ok) {
+    throw new Error(`Fetch failed ${res.status}: ${text.slice(0, 160)}`);
+  }
+  if (/^<!doctype html>|^<html/i.test(text.trim())) {
+    throw new Error(
+      "PUBLIC_SHEET_JSON returned HTML. Check Apps Script deploy ('Anyone' access) and that the URL includes ?tab=neighbourhoods."
+    );
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error("Response was not valid JSON. First 160 chars: " + text.slice(0, 160));
+  }
+}
+
+/* Build-time: generate static pages for each neighbourhood slug */
+export async function getStaticPaths() {
+  const url = import.meta.env.PUBLIC_SHEET_JSON; // MUST be .../exec?tab=neighbourhoods
+  const rows = await fetchJSON(url);
+
+  const items = (rows ?? [])
+    .map((r) => {
+      const label = String(r.name ?? r.title ?? r.neighbourhood ?? "").trim();
+      const slug = slugify(r.slug ?? label);
+      return { ...r, _label: label, _slug: slug };
+    })
+    .filter((r) => r._slug);
+
+  return items.map((n) => ({
     params: { slug: n._slug },
-    props: { item: { ...n, slug:n._slug } },
+    props: { item: n },
   }));
 }
 
 const { item } = Astro.props;
-const pageTitle = `${item.title} — Fernie Neighbourhood`;
-const description = item.desc || `About ${item.title}`;
-
-/* image helpers */
-function rawPath(img){ return img ? (img.startsWith("http") ? img : "/images/" + img) : ""; }
-function cdn(url,w,h){ return `/.netlify/images?url=${encodeURIComponent(url)}&w=${w}${h?`&h=${h}&fit=cover`:"&fit=cover"}`; }
-function heroSrc(url){ return import.meta.env.PROD ? cdn(url,1600,900) : url; }
-function heroSrcSet(url){
-  if(!import.meta.env.PROD) return undefined;
-  const widths=[960,1280,1600,1920];
-  return widths.map(w=>`${cdn(url,w,Math.round(w*0.5625))} ${w}w`).join(", ");
-}
-const raw = rawPath(item.img);
-const heroW = 1600, heroH = 900;
-
-/* quick facts (fallbacks) */
-const factVibe   = item.vibe   || "Quiet, outdoorsy, family-friendly";
-const factTrails = item.trails || "5+ trailheads within 10 min";
-const factAccess = item.access || "7 min to Downtown, on bus route";
+const title = `${item.name ?? item.title ?? "Neighbourhood"} — Fernie`;
+const description = item.desc ?? "";
+const hero = item.hero ?? "/img/hero/fernie-hero.jpg";
 ---
 
-<Site title={pageTitle} description={description} active="neighbourhoods">
-  {raw && <link slot="head" rel="preload" as="image" href={heroSrc(raw)} fetchpriority="high" />}
+<!-- HERO -->
+<section
+  class="relative h-[55vh] flex items-center justify-center bg-cover bg-center"
+  style={`background-image: url('${hero}');`}
+>
+  <div class="absolute inset-0 bg-black/40"></div>
+  <h1 class="relative text-white text-4xl font-semibold drop-shadow-md">
+    {item.name ?? item.title ?? item._label}
+  </h1>
+</section>
 
-  <!-- HERO -->
-  <div slot="hero" class="hero-wrap">
-    <style>
-      .hero-wrap { position:relative; height:55vh; }
-      .hero-img  { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
-      .shade     { position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.15)); }
-      .hero-text { position:absolute; inset:0; display:flex; align-items:flex-end; }
-      :root { --max: 72rem; --pad: 16px; }
-      .hero-side {
-        box-sizing:border-box; width:100%;
-        padding-left:calc(max((100vw - var(--max))/2,0px) + var(--pad));
-        padding-right:calc(max((100vw - var(--max))/2,0px) + var(--pad));
-        padding-bottom:calc(var(--pad) * 2); color:#fff;
-      }
-      .hero-title { margin:0; font-size:clamp(28px,5vw,44px); line-height:1.15; text-shadow:0 2px 18px rgba(0,0,0,.35); }
-    </style>
-
-    {raw ? (
-      <>
-        <img class="hero-img" src={heroSrc(raw)} srcset={heroSrcSet(raw)} sizes="100vw"
-             alt={item.title} width={heroW} height={heroH} fetchpriority="high" decoding="async" />
-        <div class="shade"></div>
-        <div class="hero-text"><div class="hero-side"><h1 class="hero-title">{item.title}</h1></div></div>
-      </>
-    ) : (
-      <div class="hero-text"><div class="hero-side"><h1 class="hero-title">{item.title}</h1></div></div>
+<Site title={title} description={description} active="neighbourhoods">
+  <section class="max-w-4xl mx-auto px-4 py-8 space-y-6">
+    {item.desc && (
+      <div class="bg-white rounded-2xl shadow-sm border border-zinc-200 p-6">
+        <p class="text-lg leading-relaxed">{item.desc}</p>
+      </div>
     )}
-  </div>
-
-  <style>
-    .back {
-      display:inline-block; margin:12px 0 16px; text-decoration:none; color:#111;
-      border:1px solid #111; padding:8px 12px; border-radius:10px;
-    }
-
-    /* Shared card style (Overview, About, CTA, and mini fact cards) */
-    .card {
-      border:1px solid #cbd5e1; border-radius:14px;
-      box-shadow:0 4px 10px rgba(0,0,0,.08);
-      background:#fff; margin:24px 0; overflow:hidden;
-    }
-    .card h2 {
-      margin:0; padding:16px; border-bottom:1px solid #e5e7eb;
-      font-size:18px; color:#334155;
-    }
-    .card-body { padding:16px; }
-    .content :where(h2,h3){margin-top:1.2em}
-
-    /* Quick facts grid (three mini cards using the same style) */
-    .qfacts-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:16px; margin:24px 0; }
-    .qfact {
-      border:1px solid #cbd5e1; border-radius:14px; background:#fff;
-      box-shadow:0 4px 10px rgba(0,0,0,.08);
-    }
-    .qfact .qbody { padding:12px 14px; }
-    .qfact .title { display:flex; align-items:center; gap:8px; font-weight:700; color:#111827; margin:0 0 4px; font-size:14px; }
-    .qfact p { margin:0; font-size:13px; color:#475569; }
-
-    /* CTA (card look, no title, stronger bg) */
-    .cta { background:#f0f6ff; border-color:#bfdbfe; }
-    .cta .card-body { text-align:center; }
-    .cta .cta-button {
-      display:inline-block; background:#0971ce; color:#fff; font-weight:600;
-      padding:12px 24px; border-radius:8px; text-decoration:none;
-      transition: background .2s ease, transform .2s ease;
-    }
-    .cta .cta-button:hover { background:#0757a6; transform:translateY(-1px); }
-  </style>
-
-  <a class="back" href="/neighbourhoods">← Back to neighbourhoods</a>
-
-  <!-- OVERVIEW (card) -->
-  <section class="card" aria-labelledby="desc-title">
-    <h2 id="desc-title">{item.title} Overview</h2>
-    <div class="card-body"><p>{item.desc}</p></div>
+    <!-- Whatever else you render (maps, cards, etc.) -->
   </section>
-
-  <!-- QUICK FACTS: three MINI CARDS -->
-  <section id="qfacts" class="qfacts-grid" aria-label="Quick facts" style="display:grid;visibility:visible;opacity:1">
-    <article class="qfact">
-      <div class="qbody">
-        <h3 class="title">🏔️ Vibe</h3>
-        <p>{factVibe}</p>
-      </div>
-    </article>
-    <article class="qfact">
-      <div class="qbody">
-        <h3 class="title">🚲 Trails</h3>
-        <p>{factTrails}</p>
-      </div>
-    </article>
-    <article class="qfact">
-      <div class="qbody">
-        <h3 class="title">🚌 Access</h3>
-        <p>{factAccess}</p>
-      </div>
-    </article>
-  </section>
-
-  <!-- CTA (card style, no title) -->
-  <section class="card cta">
-    <div class="card-body">
-      <p style="margin:0 0 16px;font-size:16px;color:#1e293b;font-weight:500">
-        See the latest listings and market updates for {item.title}.
-      </p>
-      <a class="cta-button" href={`/search?neighbourhood=${item.slug}`}>
-        Browse {item.title} Homes →
-      </a>
-    </div>
-  </section>
-
-  <!-- ABOUT (card, optional) -->
-  {item.about && (
-    <section class="card" aria-labelledby="about-title">
-      <h2 id="about-title">About {item.title}</h2>
-      <div class="card-body">
-        <section class="content" set:html={item.about}></section>
-      </div>
-    </section>
-  )}
-
-  <!-- Keep quick-facts visible in case anything tries to hide them post-hydration -->
-  <script>
-    (function () {
-      const el = document.getElementById('qfacts');
-      if (!el) return;
-      const lock = () => {
-        el.style.display = 'grid';
-        el.style.visibility = 'visible';
-        el.style.opacity = '1';
-        el.removeAttribute('hidden');
-        el.classList.remove('hidden','is-hidden','sr-only');
-      };
-      lock();
-      const mo = new MutationObserver(() => { console.warn('[qfacts] visibility changed'); lock(); });
-      mo.observe(el, { attributes: true, attributeFilter: ['class','style','hidden'] });
-    })();
-  </script>
 </Site>
